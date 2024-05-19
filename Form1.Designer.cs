@@ -58,8 +58,7 @@
             "ReadUncommitted",
             "ReadCommitted",
             "RepeatableRead",
-            "Serializable",
-            "Snapshot"});
+            "Serializable"});
             this.comboBoxIsolationLevel.Location = new System.Drawing.Point(18, 118);
             this.comboBoxIsolationLevel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.comboBoxIsolationLevel.Name = "comboBoxIsolationLevel";
