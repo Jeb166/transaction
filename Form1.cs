@@ -18,7 +18,7 @@ namespace transaction
         private int _typeACount = 0;
         private int _typeBCount = 0;
         private object _lockObject = new object();
-        Random rand = new Random();  // Create a single Random object here
+        Random rand = new Random();
 
         public Form1()
         {
@@ -62,18 +62,17 @@ namespace transaction
         {
             DateTime startTime = DateTime.Now;
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 1; i++) //Set i to 1 for testing purposes after that set to 100
             {
                 using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
                     connection.Open();
 
-
                     SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
 
                     try
                     {
-                        if (rand.NextDouble() < 0.5)  // Use the same Random object
+                        if (rand.NextDouble() < 0.5)  
                         {
                             RunUpdateQuery(connection, transaction, "20110101", "20111231");
                         }
@@ -95,16 +94,25 @@ namespace transaction
                         }
 
                         transaction.Commit();
-
                     }
                     catch (SqlException ex)
                     {
-                        transaction.Rollback();
-                        Interlocked.Increment(ref a_deadlockCount);
-                        // Handle error
+                        if (ex.Number == 1205) 
+                        {
+                            //transaction.Rollback();
+                            Interlocked.Increment(ref a_deadlockCount); 
+                            Console.WriteLine("Deadlock occured in A method.");
+                        }
+                        else
+                        {
+                            //transaction.Rollback();
+                            i--;
+                            Console.WriteLine("Exception occured in A method.");
+                            throw;
+                        }
                     }
                     finally
-                    {
+                    {   
                         connection.Close();
                     }
                 }
@@ -123,12 +131,11 @@ namespace transaction
         {
             DateTime startTime = DateTime.Now;
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 1; i++) //Set to 1 for testing purposes after that set to 100
             {
                 using (SqlConnection connection = new SqlConnection(_connectionString))
                 {
                     connection.Open();
-
 
                     SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
 
@@ -156,14 +163,22 @@ namespace transaction
                         }
 
                         transaction.Commit();
-
-
                     }
                     catch (SqlException ex)
                     {
-                        transaction.Rollback();
-                        Interlocked.Increment(ref b_deadlockCount);
-                        // Handle error
+                        if (ex.Number == 1205) 
+                        {
+                            //transaction.Rollback();
+                            Interlocked.Increment(ref a_deadlockCount);
+                            Console.WriteLine("Deadlock occured in B method.");
+                        }
+                        else
+                        {
+                            //transaction.Rollback();
+                            i--;
+                            Console.WriteLine("Exception occured in B method.");
+                            throw;
+                        }
                     }
                     finally
                     {
@@ -191,7 +206,7 @@ namespace transaction
         }
 
         private void RunUpdateQuery(SqlConnection connection, SqlTransaction transaction, string beginDate, string endDate)
-        {
+        {   
             using (SqlCommand command = new SqlCommand("UPDATE Sales.SalesOrderDetail SET UnitPrice = UnitPrice * 10.0 / 10.0 WHERE UnitPrice > 100 AND EXISTS (SELECT * FROM Sales.SalesOrderHeader WHERE Sales.SalesOrderHeader.SalesOrderID = Sales.SalesOrderDetail.SalesOrderID AND Sales.SalesOrderHeader.OrderDate BETWEEN @BeginDate AND @EndDate AND Sales.SalesOrderHeader.OnlineOrderFlag = 1)", connection, transaction))
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
@@ -200,17 +215,20 @@ namespace transaction
                 try
                 {
                     command.ExecuteNonQuery();
+                    Console.WriteLine("Update query executed.");
                 }
                 catch (SqlException ex)
                 {
-                    if (ex.Number == 1205) // Deadlock
+                    if (ex.Number == 1205) 
                     {
-                        transaction.Rollback();
-                        Interlocked.Increment(ref a_deadlockCount); // Increment global deadlock count
-                        RunUpdateQuery(connection, transaction, beginDate, endDate);
+                        //RunUpdateQuery(connection, transaction, beginDate, endDate);
+                        Interlocked.Increment(ref a_deadlockCount);
+                        Console.WriteLine("Deadlock occured in update method.");
                     }
                     else
-                    {
+                    { 
+                        //RunUpdateQuery(connection, transaction, beginDate, endDate);
+                        Console.WriteLine("Exception occured in update method.");
                         throw;
                     }
                 }
@@ -218,7 +236,7 @@ namespace transaction
         }
 
         private void RunSelectQuery(SqlConnection connection, SqlTransaction transaction, string beginDate, string endDate)
-        {
+        {   
             using (SqlCommand command = new SqlCommand("SELECT SUM(Sales.SalesOrderDetail.OrderQty) FROM Sales.SalesOrderDetail WHERE UnitPrice > 100 AND EXISTS (SELECT * FROM Sales.SalesOrderHeader WHERE Sales.SalesOrderHeader.SalesOrderID = Sales.SalesOrderDetail.SalesOrderID AND Sales.SalesOrderHeader.OrderDate BETWEEN @BeginDate AND @EndDate AND Sales.SalesOrderHeader.OnlineOrderFlag = 1)", connection, transaction))
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
@@ -227,21 +245,24 @@ namespace transaction
                 try
                 {
                     command.ExecuteScalar();
+                    Console.WriteLine("Select query executed.");
                 }
                 catch (SqlException ex)
                 {
-                    if (ex.Number == 1205) // Deadlock
+                    if (ex.Number == 1205) 
                     {
-                        transaction.Rollback();
-                        Interlocked.Increment(ref b_deadlockCount); // Increment global deadlock count
-                        RunSelectQuery(connection, transaction, beginDate, endDate);
+                        //RunSelectQuery(connection, transaction, beginDate, endDate);
+                        Interlocked.Increment(ref a_deadlockCount);
+                        Console.WriteLine("Deadlock occured in select method.");
                     }
                     else
                     {
+                        //RunSelectQuery(connection, transaction, beginDate, endDate);
+                        Console.WriteLine("Exception occured in select method.");
                         throw;
                     }
                 }
-            }
+            } 
         }
     }
 }
