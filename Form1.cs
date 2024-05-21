@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Threading;
 using System.Data.SqlClient;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace transaction
@@ -18,7 +18,7 @@ namespace transaction
         private int _typeACount = 0;
         private int _typeBCount = 0;
         private object _lockObject = new object();
-        Random rand = new Random();
+        private Random rand = new Random();
 
         public Form1()
         {
@@ -36,14 +36,14 @@ namespace transaction
 
             for (int i = 0; i < typeAUsers; i++)
             {
-                Thread thread = new Thread(() => TypeAUserThread());
+                Thread thread = new Thread(TypeAUserThread);
                 threads.Add(thread);
                 thread.Start();
             }
 
             for (int i = 0; i < typeBUsers; i++)
             {
-                Thread thread = new Thread(() => TypeBUserThread());
+                Thread thread = new Thread(TypeBUserThread);
                 threads.Add(thread);
                 thread.Start();
             }
@@ -54,145 +54,90 @@ namespace transaction
             }
 
             CalculateAndPrintAverageDurations();
-            Console.WriteLine("Deadlocks occured by Type A Threads: {0}", a_deadlockCount);
-            Console.WriteLine("Deadlocks occured by Type A Threads: {0}", b_deadlockCount);
+            Console.WriteLine("Deadlocks occurred by Type A Threads: {0}", a_deadlockCount);
+            Console.WriteLine("Deadlocks occurred by Type B Threads: {0}", b_deadlockCount);
         }
 
         private void TypeAUserThread()
         {
-            DateTime startTime = DateTime.Now;
-
-            for (int i = 0; i < 1; i++) //Set i to 1 for testing purposes after that set to 100
-            {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
+            ExecuteUserThread(
+                "A",
+                (connection, transaction) =>
                 {
-                    connection.Open();
-
-                    SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
-
-                    try
-                    {
-                        if (rand.NextDouble() < 0.5)  
-                        {
-                            RunUpdateQuery(connection, transaction, "20110101", "20111231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunUpdateQuery(connection, transaction, "20120101", "20121231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunUpdateQuery(connection, transaction, "20130101", "20131231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunUpdateQuery(connection, transaction, "20140101", "20141231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunUpdateQuery(connection, transaction, "20150101", "20151231");
-                        }
-
-                        transaction.Commit();
-                    }
-                    catch (SqlException ex)
-                    {
-                        if (ex.Number == 1205) 
-                        {
-                            //transaction.Rollback();
-                            Interlocked.Increment(ref a_deadlockCount); 
-                            Console.WriteLine("Deadlock occured in A method.");
-                        }
-                        else
-                        {
-                            //transaction.Rollback();
-                            i--;
-                            Console.WriteLine("Exception occured in A method.");
-                            throw;
-                        }
-                    }
-                    finally
-                    {   
-                        connection.Close();
-                    }
-                }
-            }
-
-            TimeSpan elapsedTime = DateTime.Now - startTime;
-            lock (_lockObject)
-            {
-                _totalDurationTypeA += elapsedTime.TotalMilliseconds;
-                _typeACount++;
-            }
+                    if (rand.NextDouble() < 0.5) RunUpdateQuery(connection, transaction, "20110101", "20111231");
+                    if (rand.NextDouble() < 0.5) RunUpdateQuery(connection, transaction, "20120101", "20121231");
+                    if (rand.NextDouble() < 0.5) RunUpdateQuery(connection, transaction, "20130101", "20131231");
+                    if (rand.NextDouble() < 0.5) RunUpdateQuery(connection, transaction, "20140101", "20141231");
+                    if (rand.NextDouble() < 0.5) RunUpdateQuery(connection, transaction, "20150101", "20151231");
+                },
+                ref _totalDurationTypeA, ref _typeACount, ref a_deadlockCount);
         }
-
 
         private void TypeBUserThread()
         {
+            ExecuteUserThread(
+                "B",
+                (connection, transaction) =>
+                {
+                    if (rand.NextDouble() < 0.5) RunSelectQuery(connection, transaction, "20110101", "20111231");
+                    if (rand.NextDouble() < 0.5) RunSelectQuery(connection, transaction, "20120101", "20121231");
+                    if (rand.NextDouble() < 0.5) RunSelectQuery(connection, transaction, "20130101", "20131231");
+                    if (rand.NextDouble() < 0.5) RunSelectQuery(connection, transaction, "20140101", "20141231");
+                    if (rand.NextDouble() < 0.5) RunSelectQuery(connection, transaction, "20150101", "20151231");
+                },
+                ref _totalDurationTypeB, ref _typeBCount, ref b_deadlockCount);
+        }
+
+        private void ExecuteUserThread(string threadType, Action<SqlConnection, SqlTransaction> action, ref double totalDuration, ref int count, ref int deadlockCount)
+        {
             DateTime startTime = DateTime.Now;
 
-            for (int i = 0; i < 1; i++) //Set to 1 for testing purposes after that set to 100
+            for (int i = 0; i < 100; i++) // Set to 100 iterations
             {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
+                bool success = false;
+                while (!success)
                 {
-                    connection.Open();
-
-                    SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
-
-                    try
+                    using (SqlConnection connection = new SqlConnection(_connectionString))
                     {
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunSelectQuery(connection, transaction, "20110101", "20111231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunSelectQuery(connection, transaction, "20120101", "20121231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunSelectQuery(connection, transaction, "20130101", "20131231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunSelectQuery(connection, transaction, "20140101", "20141231");
-                        }
-                        if (rand.NextDouble() < 0.5)
-                        {
-                            RunSelectQuery(connection, transaction, "20150101", "20151231");
-                        }
+                        connection.Open();
+                        SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
 
-                        transaction.Commit();
-                    }
-                    catch (SqlException ex)
-                    {
-                        if (ex.Number == 1205) 
+                        try
                         {
-                            //transaction.Rollback();
-                            Interlocked.Increment(ref a_deadlockCount);
-                            Console.WriteLine("Deadlock occured in B method.");
+                            action(connection, transaction);
+                            transaction.Commit();
+                            success = true;
                         }
-                        else
+                        catch (SqlException ex)
                         {
-                            //transaction.Rollback();
-                            i--;
-                            Console.WriteLine("Exception occured in B method.");
-                            throw;
+                            if (ex.Number == 1205)
+                            {
+                                Interlocked.Increment(ref deadlockCount);
+                                Console.WriteLine($"Deadlock occurred in {threadType} method.");
+                            }
+                            else if (ex.Number == -2) // SQL Server timeout
+                            {
+                                Console.WriteLine($"Timeout occurred in {threadType} method: {ex.Message}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Exception occurred in {threadType} method: {ex.Message}");
+                                throw;
+                            }
                         }
-                    }
-                    finally
-                    {
-                        connection.Close();
+                        finally
+                        {
+                            connection.Close();
+                        }
                     }
                 }
             }
 
-
             TimeSpan elapsedTime = DateTime.Now - startTime;
             lock (_lockObject)
             {
-                _totalDurationTypeB += elapsedTime.TotalMilliseconds;
-                _typeBCount++;
+                totalDuration += elapsedTime.TotalMilliseconds;
+                count++;
             }
         }
 
@@ -206,63 +151,27 @@ namespace transaction
         }
 
         private void RunUpdateQuery(SqlConnection connection, SqlTransaction transaction, string beginDate, string endDate)
-        {   
+        {
             using (SqlCommand command = new SqlCommand("UPDATE Sales.SalesOrderDetail SET UnitPrice = UnitPrice * 10.0 / 10.0 WHERE UnitPrice > 100 AND EXISTS (SELECT * FROM Sales.SalesOrderHeader WHERE Sales.SalesOrderHeader.SalesOrderID = Sales.SalesOrderDetail.SalesOrderID AND Sales.SalesOrderHeader.OrderDate BETWEEN @BeginDate AND @EndDate AND Sales.SalesOrderHeader.OnlineOrderFlag = 1)", connection, transaction))
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
-
-                try
-                {
-                    command.ExecuteNonQuery();
-                    Console.WriteLine("Update query executed.");
-                }
-                catch (SqlException ex)
-                {
-                    if (ex.Number == 1205) 
-                    {
-                        //RunUpdateQuery(connection, transaction, beginDate, endDate);
-                        Interlocked.Increment(ref a_deadlockCount);
-                        Console.WriteLine("Deadlock occured in update method.");
-                    }
-                    else
-                    { 
-                        //RunUpdateQuery(connection, transaction, beginDate, endDate);
-                        Console.WriteLine("Exception occured in update method.");
-                        throw;
-                    }
-                }
+                command.CommandTimeout = 60; // Increase timeout to 60 seconds
+                command.ExecuteNonQuery();
+                Console.WriteLine("Update query executed.");
             }
         }
 
         private void RunSelectQuery(SqlConnection connection, SqlTransaction transaction, string beginDate, string endDate)
-        {   
-            using (SqlCommand command = new SqlCommand("SELECT SUM(Sales.SalesOrderDetail.OrderQty) FROM Sales.SalesOrderDetail WHERE UnitPrice > 100 AND EXISTS (SELECT * FROM Sales.SalesOrderHeader WHERE Sales.SalesOrderHeader.SalesOrderID = Sales.SalesOrderDetail.SalesOrderID AND Sales.SalesOrderHeader.OrderDate BETWEEN @BeginDate AND @EndDate AND Sales.SalesOrderHeader.OnlineOrderFlag = 1)", connection, transaction))
+        {
+            using (SqlCommand command = new SqlCommand("SELECT SUM(Sales.SalesOrderDetail.OrderQty) FROM Sales.SalesOrderDetail WITH (XLOCK, ROWLOCK) WHERE UnitPrice > 100 AND EXISTS (SELECT * FROM Sales.SalesOrderHeader WHERE Sales.SalesOrderHeader.SalesOrderID = Sales.SalesOrderDetail.SalesOrderID AND Sales.SalesOrderHeader.OrderDate BETWEEN @BeginDate AND @EndDate AND Sales.SalesOrderHeader.OnlineOrderFlag = 1)", connection, transaction))
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
-
-                try
-                {
-                    command.ExecuteScalar();
-                    Console.WriteLine("Select query executed.");
-                }
-                catch (SqlException ex)
-                {
-                    if (ex.Number == 1205) 
-                    {
-                        //RunSelectQuery(connection, transaction, beginDate, endDate);
-                        Interlocked.Increment(ref a_deadlockCount);
-                        Console.WriteLine("Deadlock occured in select method.");
-                    }
-                    else
-                    {
-                        //RunSelectQuery(connection, transaction, beginDate, endDate);
-                        Console.WriteLine("Exception occured in select method.");
-                        throw;
-                    }
-                }
-            } 
+                command.CommandTimeout = 60; // Increase timeout to 60 seconds
+                command.ExecuteScalar();
+                Console.WriteLine("Select query executed.");
+            }
         }
     }
 }
