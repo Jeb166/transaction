@@ -98,6 +98,11 @@
             // nudTypeAUsers
             // 
             this.nudTypeAUsers.Location = new System.Drawing.Point(18, 43);
+            this.nudTypeAUsers.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
             this.nudTypeAUsers.Name = "nudTypeAUsers";
             this.nudTypeAUsers.Size = new System.Drawing.Size(178, 26);
             this.nudTypeAUsers.TabIndex = 7;
@@ -105,6 +110,11 @@
             // nudTypeBUsers
             // 
             this.nudTypeBUsers.Location = new System.Drawing.Point(18, 82);
+            this.nudTypeBUsers.Maximum = new decimal(new int[] {
+            1000,
+            0,
+            0,
+            0});
             this.nudTypeBUsers.Name = "nudTypeBUsers";
             this.nudTypeBUsers.Size = new System.Drawing.Size(178, 26);
             this.nudTypeBUsers.TabIndex = 8;

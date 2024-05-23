@@ -9,7 +9,7 @@ namespace transaction
 {
     public partial class Form1 : Form
     {
-        private string _connectionString = "Server=G513;Database=AdventureWorks2019;Trusted_Connection=True;TrustServerCertificate=true;";
+        private string _connectionString = "Server=G513;Database=AdventureWorks2019;Trusted_Connection=True;TrustServerCertificate=true;Connect Timeout=800;";
         private IsolationLevel _isolationLevel;
         private int a_deadlockCount = 0;
         private int b_deadlockCount = 0;
@@ -22,7 +22,7 @@ namespace transaction
 
         public Form1()
         {
-            InitializeComponent();
+           InitializeComponent();
         }
 
         private void buttonStartSimulation_Click(object sender, EventArgs e)
@@ -95,41 +95,67 @@ namespace transaction
             for (int i = 0; i < 100; i++) // Set to 100 iterations
             {
                 bool success = false;
-                while (!success)
+                int retryCount = 0;
+                int maxRetries = 5;
+                while (!success && retryCount < maxRetries)
                 {
                     using (SqlConnection connection = new SqlConnection(_connectionString))
                     {
                         connection.Open();
-                        SqlTransaction transaction = connection.BeginTransaction(_isolationLevel);
+                        using (SqlTransaction transaction = connection.BeginTransaction(_isolationLevel))
+                        {
+                            try
+                            {
+                                action(connection, transaction);
+                                transaction.Commit();
+                                success = true;
+                            }
+                            catch (SqlException ex)
+                            {
+                                if (transaction.Connection != null) // Check if transaction is still active
+                                {
+                                    try
+                                    {
+                                        transaction.Rollback();
+                                    }
+                                    catch (InvalidOperationException)
+                                    {
+                                        // Transaction has already been completed, no action needed
+                                    }
+                                }
 
-                        try
-                        {
-                            action(connection, transaction);
-                            transaction.Commit();
-                            success = true;
-                        }
-                        catch (SqlException ex)
-                        {
-                            if (ex.Number == 1205)
-                            {
-                                Interlocked.Increment(ref deadlockCount);
-                                Console.WriteLine($"Deadlock occurred in {threadType} method.");
+                                if (ex.Number == 1205) // Deadlock
+                                {
+                                    Interlocked.Increment(ref deadlockCount);
+                                    Console.WriteLine($"Deadlock occurred in {threadType} method.");
+                                }
+                                else if (ex.Number == -2) // SQL Server timeout
+                                {
+                                    Console.WriteLine($"Timeout occurred in {threadType} method: {ex.Message}");
+                                }
+                                else if (ex.Message.Contains("The transaction ended in the trigger. The batch has been aborted."))
+                                {
+                                    Console.WriteLine($"Trigger issue in {threadType} method: {ex.Message}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Exception occurred in {threadType} method: {ex.Message}");
+                                    throw;
+                                }
+                                retryCount++;
+                                Thread.Sleep((int)(Math.Pow(2, retryCount) * 100) + rand.Next(100)); // Exponential backoff with random jitter
                             }
-                            else if (ex.Number == -2) // SQL Server timeout
+                            finally
                             {
-                                Console.WriteLine($"Timeout occurred in {threadType} method: {ex.Message}");
+                                connection.Close();
                             }
-                            else
-                            {
-                                Console.WriteLine($"Exception occurred in {threadType} method: {ex.Message}");
-                                throw;
-                            }
-                        }
-                        finally
-                        {
-                            connection.Close();
                         }
                     }
+                }
+
+                if (!success)
+                {
+                    Console.WriteLine($"Operation in {threadType} method failed after {maxRetries} retries.");
                 }
             }
 
@@ -156,9 +182,8 @@ namespace transaction
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
-                command.CommandTimeout = 60; // Increase timeout to 60 seconds
+                command.CommandTimeout = 60; // Adjusted timeout to 60 seconds
                 command.ExecuteNonQuery();
-                Console.WriteLine("Update query executed.");
             }
         }
 
@@ -168,9 +193,8 @@ namespace transaction
             {
                 command.Parameters.AddWithValue("@BeginDate", beginDate);
                 command.Parameters.AddWithValue("@EndDate", endDate);
-                command.CommandTimeout = 60; // Increase timeout to 60 seconds
+                command.CommandTimeout = 60; // Adjusted timeout to 60 seconds
                 command.ExecuteScalar();
-                Console.WriteLine("Select query executed.");
             }
         }
     }
