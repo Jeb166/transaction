@@ -22,7 +22,7 @@ namespace transaction
         private void StartSimulation_Button(object sender, EventArgs e)
         {
             List<(string TableName1, string IndexName1)> indexes1 = new List<(string, string)>
-            {       
+            {
             ("Sales.SalesOrderDetail", "AK_SalesOrderDetail_rowguid"),
             ("Sales.SalesOrderDetail", "IX_SalesOrderDetail_ProductID"),
             ("Sales.SalesOrderHeader", "AK_SalesOrderHeader_rowguid"),
@@ -43,9 +43,9 @@ namespace transaction
 
             string connectionString = "Server=G513;Database=AdventureWorks2019;Trusted_Connection=True;TrustServerCertificate=true;";
 
-            HandleIndexes(connectionString, indexes1, indexes2);
+            HandleIndexes(connectionString);
 
-            int totalOperations = (countTypeA + countTypeB) * 100; // Toplam işlemi hesapla
+            int totalOperations = (countTypeA + countTypeB) * 100; 
 
             var threads = new List<Thread>();
             StartUserThreads(countTypeA, "TypeA", selectedIsolationLevel, connectionString, totalOperations, threads);
@@ -70,8 +70,24 @@ namespace transaction
             }
         }
 
-        private void HandleIndexes(string connectionString, List<(string TableName1, string IndexName1)> indexes1, List<(string TableName2, string IndexName2)> indexes2)
+        private void HandleIndexes(string connectionString)
         {
+            List<(string TableName1, string IndexName1)> indexes1 = new List<(string, string)>
+            {
+            ("Sales.SalesOrderDetail", "AK_SalesOrderDetail_rowguid"),
+            ("Sales.SalesOrderDetail", "IX_SalesOrderDetail_ProductID"),
+            ("Sales.SalesOrderHeader", "AK_SalesOrderHeader_rowguid"),
+            ("Sales.SalesOrderHeader", "AK_SalesOrderHeader_SalesOrderNumber"),
+            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_CustomerID"),
+            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_SalesPersonID")
+            };
+
+            List<(string TableName2, string IndexName2)> indexes2 = new List<(string, string)>
+            {
+            ("Sales.SalesOrderDetail", "IX_SalesOrderDetail_UnitPrice_SalesOrderID"),
+            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_SalesOrderID_OrderDate_OnlineOrderFlag")
+            };
+
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 connection.Open();
@@ -163,12 +179,11 @@ namespace transaction
             }
         }
 
-
         private void StartUserThreads(int userCount, string userType, IsolationLevel isolationLevel, string connectionString, int totalOperations, List<Thread> threads)
         {
             for (int i = 0; i < userCount; i++)
             {
-                int threadIndex = i; // Local değişken
+                int threadIndex = i; 
                 Thread thread = new Thread(() => RunDatabaseOperations(userType, threadIndex, isolationLevel, connectionString, totalOperations));
                 threads.Add(thread);
                 thread.Start();
@@ -229,7 +244,7 @@ namespace transaction
                         {
                             timeouts++;
                             i--;
-                            totalTimeoutDuration += 5000; // Assuming 5 seconds for each timeout
+                            totalTimeoutDuration += 5000; 
                             SafeRollback(transaction);
                             Debug.WriteLine("Timeout encountered. Continuing gracefully.");
                         }
