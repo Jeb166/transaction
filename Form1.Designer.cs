@@ -13,7 +13,7 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components!= null))
+            if (disposing && (components != null))
             {
                 components.Dispose();
             }
@@ -35,20 +35,22 @@
             this.label3 = new System.Windows.Forms.Label();
             this.nudTypeAUsers = new System.Windows.Forms.NumericUpDown();
             this.nudTypeBUsers = new System.Windows.Forms.NumericUpDown();
+            this.comboBoxIndex = new System.Windows.Forms.ComboBox();
+            this.label4 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.nudTypeAUsers)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nudTypeBUsers)).BeginInit();
             this.SuspendLayout();
             // 
             // buttonStartSimulation
             // 
-            this.buttonStartSimulation.Location = new System.Drawing.Point(18, 160);
+            this.buttonStartSimulation.Location = new System.Drawing.Point(127, 197);
             this.buttonStartSimulation.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.buttonStartSimulation.Name = "buttonStartSimulation";
             this.buttonStartSimulation.Size = new System.Drawing.Size(180, 35);
             this.buttonStartSimulation.TabIndex = 0;
             this.buttonStartSimulation.Text = "Start Simulation";
             this.buttonStartSimulation.UseVisualStyleBackColor = true;
-            this.buttonStartSimulation.Click += new System.EventHandler(this.buttonStartSimulation_Click);
+            this.buttonStartSimulation.Click += new System.EventHandler(this.StartSimulation_Button);
             // 
             // comboBoxIsolationLevel
             // 
@@ -59,7 +61,7 @@
             "ReadCommitted",
             "RepeatableRead",
             "Serializable"});
-            this.comboBoxIsolationLevel.Location = new System.Drawing.Point(18, 118);
+            this.comboBoxIsolationLevel.Location = new System.Drawing.Point(247, 126);
             this.comboBoxIsolationLevel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             this.comboBoxIsolationLevel.Name = "comboBoxIsolationLevel";
             this.comboBoxIsolationLevel.Size = new System.Drawing.Size(178, 28);
@@ -68,7 +70,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(207, 49);
+            this.label1.Location = new System.Drawing.Point(53, 20);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(108, 20);
@@ -78,7 +80,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(207, 89);
+            this.label2.Location = new System.Drawing.Point(278, 20);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(108, 20);
@@ -88,7 +90,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(207, 123);
+            this.label3.Location = new System.Drawing.Point(278, 101);
             this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(114, 20);
@@ -109,7 +111,7 @@
             // 
             // nudTypeBUsers
             // 
-            this.nudTypeBUsers.Location = new System.Drawing.Point(18, 82);
+            this.nudTypeBUsers.Location = new System.Drawing.Point(247, 43);
             this.nudTypeBUsers.Maximum = new decimal(new int[] {
             1000,
             0,
@@ -119,11 +121,33 @@
             this.nudTypeBUsers.Size = new System.Drawing.Size(178, 26);
             this.nudTypeBUsers.TabIndex = 8;
             // 
+            // comboBoxIndex
+            // 
+            this.comboBoxIndex.FormattingEnabled = true;
+            this.comboBoxIndex.Items.AddRange(new object[] {
+            "Part 1: Without Indexes",
+            "Part 2: With Indexes"});
+            this.comboBoxIndex.Location = new System.Drawing.Point(18, 126);
+            this.comboBoxIndex.Name = "comboBoxIndex";
+            this.comboBoxIndex.Size = new System.Drawing.Size(178, 28);
+            this.comboBoxIndex.TabIndex = 9;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(91, 101);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(42, 20);
+            this.label4.TabIndex = 10;
+            this.label4.Text = "Part:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(576, 592);
+            this.ClientSize = new System.Drawing.Size(465, 311);
+            this.Controls.Add(this.label4);
+            this.Controls.Add(this.comboBoxIndex);
             this.Controls.Add(this.nudTypeBUsers);
             this.Controls.Add(this.nudTypeAUsers);
             this.Controls.Add(this.label3);
@@ -150,5 +174,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.NumericUpDown nudTypeAUsers;
         private System.Windows.Forms.NumericUpDown nudTypeBUsers;
+        private System.Windows.Forms.ComboBox comboBoxIndex;
+        private System.Windows.Forms.Label label4;
     }
 }
