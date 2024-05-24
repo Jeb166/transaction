@@ -21,22 +21,6 @@ namespace transaction
 
         private void StartSimulation_Button(object sender, EventArgs e)
         {
-            List<(string TableName1, string IndexName1)> indexes1 = new List<(string, string)>
-            {
-            ("Sales.SalesOrderDetail", "AK_SalesOrderDetail_rowguid"),
-            ("Sales.SalesOrderDetail", "IX_SalesOrderDetail_ProductID"),
-            ("Sales.SalesOrderHeader", "AK_SalesOrderHeader_rowguid"),
-            ("Sales.SalesOrderHeader", "AK_SalesOrderHeader_SalesOrderNumber"),
-            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_CustomerID"),
-            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_SalesPersonID")
-            };
-
-            List<(string TableName2, string IndexName2)> indexes2 = new List<(string, string)>
-            {
-            ("Sales.SalesOrderDetail", "IX_SalesOrderDetail_UnitPrice_SalesOrderID"),
-            ("Sales.SalesOrderHeader", "IX_SalesOrderHeader_SalesOrderID_OrderDate_OnlineOrderFlag")
-            };
-
             IsolationLevel selectedIsolationLevel = (IsolationLevel)Enum.Parse(typeof(IsolationLevel), comboBoxIsolationLevel.SelectedItem.ToString());
             int countTypeA = (int)nudTypeAUsers.Value;
             int countTypeB = (int)nudTypeBUsers.Value;
