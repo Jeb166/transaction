@@ -42,15 +42,23 @@ namespace transaction
                 thread.Join();
             }
 
+
+
+            Console.WriteLine($"\n_________________________________________________________");
+            Console.WriteLine($"\n{comboBoxIndex.SelectedItem.ToString()}");
+            Console.WriteLine($"Isolation Level: {comboBoxIsolationLevel.SelectedItem.ToString()}\n");
+
             foreach (var key in simulationResult.Keys)
             {
                 var stats = simulationResult[key];
-                Console.WriteLine($"User: {key}");
+                string limitedString = key.Substring(0, 5);
+
+                Console.WriteLine($"User: {limitedString}");
                 Console.WriteLine($"Deadlocks: {stats.TotalDeadlocks}");
                 Console.WriteLine($"Total Duration: {stats.TotalDuration}");
                 Console.WriteLine($"Average Duration: {stats.AverageDuration}");
                 Console.WriteLine($"Total Runs: {stats.TotalRuns}");
-                Console.WriteLine($"Total Timeout Duration: {stats.TotalTimeoutDuration}");
+                Console.WriteLine($"Total Timeout Duration: {stats.TotalTimeoutDuration}\n");
             }
         }
 
