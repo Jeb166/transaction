@@ -43,73 +43,7 @@ namespace transaction
 
             string connectionString = "Server=G513;Database=AdventureWorks2019;Trusted_Connection=True;TrustServerCertificate=true;";
 
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-
-                foreach (var (tableName1, indexName1) in indexes1)
-                {
-                    bool indexExists = IndexExists(connectionString, indexName1, tableName1);
-
-                    if (indexExists)
-                    {
-                        using (SqlCommand command = new SqlCommand())
-                        {
-                            command.Connection = connection;
-                            command.CommandText = $@"
-                                    DROP INDEX {indexName1} ON {tableName1}";
-                            command.ExecuteNonQuery();
-                        }
-                    }
-                }
-
-                string selectedPart = comboBoxIndex.SelectedItem.ToString();
-
-                if(selectedPart == "Part 1: Without Indexes")
-                {
-                    foreach (var (tableName2, indexName2) in indexes2)
-                    {
-                        bool indexExists = IndexExists(connectionString, indexName2, tableName2);
-
-                        if (indexExists)
-                        {
-                            using (SqlCommand command = new SqlCommand())
-                            {
-                                command.Connection = connection;
-                                command.CommandText = $@"
-                                    DROP INDEX {indexName2} ON {tableName2}";
-                                command.ExecuteNonQuery();
-                            }
-                        }
-                    }
-                }
-                else if(selectedPart == "Part 2: With Indexes")
-                {
-                    foreach (var (tableName2, indexName2) in indexes2)
-                    {
-                        bool indexExists = IndexExists(connectionString, indexName2, tableName2);
-
-                        if (!indexExists)
-                        {
-                            using (SqlCommand command = new SqlCommand())
-                            {
-                                command.Connection = connection;
-                                command.CommandText = $@"
-                                -- Index on SalesOrderDetail table for UnitPrice and SalesOrderID
-                                CREATE INDEX IX_SalesOrderDetail_UnitPrice_SalesOrderID
-                                ON Sales.SalesOrderDetail (UnitPrice, SalesOrderID);
-
-                                -- Index on SalesOrderHeader table for SalesOrderID, OrderDate, and OnlineOrderFlag
-                                CREATE INDEX IX_SalesOrderHeader_SalesOrderID_OrderDate_OnlineOrderFlag
-                                ON Sales.SalesOrderHeader (SalesOrderID, OrderDate, OnlineOrderFlag);";
-                                command.ExecuteNonQuery();
-                            }
-                        }
-                    }
-                }
-
-                connection.Close();
-            }
+            HandleIndexes(connectionString, indexes1, indexes2);
 
             int totalOperations = (countTypeA + countTypeB) * 100; // Toplam işlemi hesapla
 
@@ -133,6 +67,77 @@ namespace transaction
                 Console.WriteLine($"Average Duration: {stats.AverageDuration}");
                 Console.WriteLine($"Total Runs: {stats.TotalRuns}");
                 Console.WriteLine($"Total Timeout Duration: {stats.TotalTimeoutDuration}");
+            }
+        }
+
+        private void HandleIndexes(string connectionString, List<(string TableName1, string IndexName1)> indexes1, List<(string TableName2, string IndexName2)> indexes2)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                foreach (var (tableName1, indexName1) in indexes1)
+                {
+                    bool indexExists = IndexExists(connectionString, indexName1, tableName1);
+
+                    if (indexExists)
+                    {
+                        using (SqlCommand command = new SqlCommand())
+                        {
+                            command.Connection = connection;
+                            command.CommandText = $@"
+                            DROP INDEX {indexName1} ON {tableName1}";
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                string selectedPart = comboBoxIndex.SelectedItem.ToString();
+
+                if (selectedPart == "Part 1: Without Indexes")
+                {
+                    foreach (var (tableName2, indexName2) in indexes2)
+                    {
+                        bool indexExists = IndexExists(connectionString, indexName2, tableName2);
+
+                        if (indexExists)
+                        {
+                            using (SqlCommand command = new SqlCommand())
+                            {
+                                command.Connection = connection;
+                                command.CommandText = $@"
+                            DROP INDEX {indexName2} ON {tableName2}";
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+                else if (selectedPart == "Part 2: With Indexes")
+                {
+                    foreach (var (tableName2, indexName2) in indexes2)
+                    {
+                        bool indexExists = IndexExists(connectionString, indexName2, tableName2);
+
+                        if (!indexExists)
+                        {
+                            using (SqlCommand command = new SqlCommand())
+                            {
+                                command.Connection = connection;
+                                command.CommandText = $@"
+                        -- Index on SalesOrderDetail table for UnitPrice and SalesOrderID
+                        CREATE INDEX IX_SalesOrderDetail_UnitPrice_SalesOrderID
+                        ON Sales.SalesOrderDetail (UnitPrice, SalesOrderID);
+
+                        -- Index on SalesOrderHeader table for SalesOrderID, OrderDate, and OnlineOrderFlag
+                        CREATE INDEX IX_SalesOrderHeader_SalesOrderID_OrderDate_OnlineOrderFlag
+                        ON Sales.SalesOrderHeader (SalesOrderID, OrderDate, OnlineOrderFlag);";
+                                command.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+
+                connection.Close();
             }
         }
 
