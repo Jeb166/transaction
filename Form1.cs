@@ -12,7 +12,7 @@ namespace transaction
 {
     public partial class Form1 : System.Windows.Forms.Form
     {
-        private ConcurrentDictionary<string, ThreadStats> cumulativeResults = new ConcurrentDictionary<string, ThreadStats>();
+        private ConcurrentDictionary<string, ThreadInfo> simulationResult = new ConcurrentDictionary<string, ThreadInfo>();
 
         public Form1()
         {
@@ -21,6 +21,8 @@ namespace transaction
 
         private void StartSimulation_Button(object sender, EventArgs e)
         {
+            simulationResult.Clear();
+
             IsolationLevel selectedIsolationLevel = (IsolationLevel)Enum.Parse(typeof(IsolationLevel), comboBoxIsolationLevel.SelectedItem.ToString());
             int countTypeA = (int)nudTypeAUsers.Value;
             int countTypeB = (int)nudTypeBUsers.Value;
@@ -32,20 +34,18 @@ namespace transaction
             int totalOperations = (countTypeA + countTypeB) * 100; 
 
             var threads = new List<Thread>();
-            StartUserThreads(countTypeA, "TypeA", selectedIsolationLevel, connectionString, totalOperations, threads);
-            StartUserThreads(countTypeB, "TypeB", selectedIsolationLevel, connectionString, totalOperations, threads);
+            StartThreads(countTypeA, "TypeA", selectedIsolationLevel, connectionString, totalOperations, threads);
+            StartThreads(countTypeB, "TypeB", selectedIsolationLevel, connectionString, totalOperations, threads);
 
-            // Tüm thread'lerin bitmesini bekle
-            foreach (Thread thread in threads)
+            foreach (Thread thread in threads) 
             {
                 thread.Join();
             }
 
-            // Sonuçları yazdır
-            foreach (var key in cumulativeResults.Keys)
+            foreach (var key in simulationResult.Keys)
             {
-                var stats = cumulativeResults[key];
-                Console.WriteLine($"Key: {key}");
+                var stats = simulationResult[key];
+                Console.WriteLine($"User: {key}");
                 Console.WriteLine($"Deadlocks: {stats.TotalDeadlocks}");
                 Console.WriteLine($"Total Duration: {stats.TotalDuration}");
                 Console.WriteLine($"Average Duration: {stats.AverageDuration}");
@@ -163,18 +163,18 @@ namespace transaction
             }
         }
 
-        private void StartUserThreads(int userCount, string userType, IsolationLevel isolationLevel, string connectionString, int totalOperations, List<Thread> threads)
+        private void StartThreads(int userCount, string userType, IsolationLevel isolationLevel, string connectionString, int totalOperations, List<Thread> threads)
         {
             for (int i = 0; i < userCount; i++)
             {
                 int threadIndex = i; 
-                Thread thread = new Thread(() => RunDatabaseOperations(userType, threadIndex, isolationLevel, connectionString, totalOperations));
+                Thread thread = new Thread(() => ExecuteQueries(userType, threadIndex, isolationLevel, connectionString, totalOperations));
                 threads.Add(thread);
                 thread.Start();
             }
         }
 
-        private void RunDatabaseOperations(string type, int threadNumber, IsolationLevel isolationLevel, string connectionString, int totalOperations)
+        private void ExecuteQueries(string type, int threadNumber, IsolationLevel isolationLevel, string connectionString, int totalOperations)
         {
             Debug.WriteLine($"{type} operation started for Thread Number {threadNumber} with {isolationLevel} isolation level on {connectionString}.");
             Stopwatch stopwatch = new Stopwatch();
@@ -197,7 +197,7 @@ namespace transaction
 
                 for (int i = 0; i < 100; i++)
                 {
-                    Debug.WriteLine($"{type} - Thread {threadNumber} - İşlem {i} başladı.");
+                    Debug.WriteLine($"{type} / Thread number: {threadNumber} / Operation {i} started.");
                     using (SqlCommand command = new SqlCommand())
                     {
                         SqlTransaction transaction = null;
@@ -209,11 +209,11 @@ namespace transaction
 
                             if (type == "TypeA")
                             {
-                                PerformUpdateOperations(command);
+                                ExecuteUpdateQuery(command);
                             }
                             else if (type == "TypeB")
                             {
-                                PerformSelectOperations(command);
+                                ExecuteSelectQuery(command);
                             }
 
                             transaction.Commit();
@@ -221,7 +221,7 @@ namespace transaction
                         catch (SqlException ex) when (ex.Number == 1205)
                         {
                             deadlocks++;
-                            SafeRollback(transaction);
+                            RollbackTransaction(transaction);
                             Debug.WriteLine("Deadlock encountered. Continuing gracefully.");
                         }
                         catch (SqlException ex) when (ex.Number == -2)
@@ -229,17 +229,17 @@ namespace transaction
                             timeouts++;
                             i--;
                             totalTimeoutDuration += 5000; 
-                            SafeRollback(transaction);
+                            RollbackTransaction(transaction);
                             Debug.WriteLine("Timeout encountered. Continuing gracefully.");
                         }
                         catch (Exception ex)
                         {
-                            SafeRollback(transaction);
+                            RollbackTransaction(transaction);
                             Debug.WriteLine($"An exception occurred: {ex.Message}");
                         }
                     }
 
-                    Debug.WriteLine($"{type} - Thread {threadNumber} - İşlem {i} tamamlandı.");
+                    Debug.WriteLine($"{type} / Thread number: {threadNumber} / Operation {i} executed.");
                 }
             }
 
@@ -248,11 +248,11 @@ namespace transaction
             long adjustedTotalDuration = stopwatch.ElapsedMilliseconds - totalTimeoutDuration;
 
             string key = $"{type}_{isolationLevel}_{connectionString}";
-            Debug.WriteLine($"Updating cumulativeResults for key: {key}");
+            Debug.WriteLine($"Updating simulationResult for user: {key}");
 
-            cumulativeResults.AddOrUpdate(key,
-                new ThreadStats { TotalRuns = 1, TotalDuration = adjustedTotalDuration, TotalDeadlocks = deadlocks, TotalTimeoutDuration = totalTimeoutDuration },
-                (existingKey, existingVal) => new ThreadStats
+            simulationResult.AddOrUpdate(key,
+                new ThreadInfo { TotalRuns = 1, TotalDuration = adjustedTotalDuration, TotalDeadlocks = deadlocks, TotalTimeoutDuration = totalTimeoutDuration },
+                (existingKey, existingVal) => new ThreadInfo
                 {
                     TotalRuns = existingVal.TotalRuns + 1,
                     TotalDuration = existingVal.TotalDuration + adjustedTotalDuration,
@@ -264,7 +264,7 @@ namespace transaction
             Debug.WriteLine($"{type} operation completed with {isolationLevel} isolation level on {connectionString}. Total duration: {adjustedTotalDuration} ms. Total timeouts: {timeouts}. Total timeout duration: {totalTimeoutDuration} ms.");
         }
 
-        private void SafeRollback(SqlTransaction transaction)
+        private void RollbackTransaction(SqlTransaction transaction)
         {
             if (transaction != null)
             {
@@ -279,7 +279,7 @@ namespace transaction
             }
         }
 
-        private void PerformUpdateOperations(SqlCommand command)
+        private void ExecuteUpdateQuery(SqlCommand command)
         {
             string[] dates = { "20110101", "20120101", "20130101", "20140101", "20150101" };
             foreach (string date in dates)
@@ -303,7 +303,7 @@ namespace transaction
             }
         }
 
-        private void PerformSelectOperations(SqlCommand command)
+        private void ExecuteSelectQuery(SqlCommand command)
         {
             string[] dates = { "20110101", "20120101", "20130101", "20140101", "20150101" };
             foreach (string date in dates)
@@ -327,7 +327,7 @@ namespace transaction
         }
     }
 
-    public class ThreadStats
+    public class ThreadInfo
     {
         public int TotalRuns { get; set; }
         public long TotalDuration { get; set; }
