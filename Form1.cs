@@ -27,7 +27,7 @@ namespace transaction
             int countTypeA = (int)nudTypeAUsers.Value;
             int countTypeB = (int)nudTypeBUsers.Value;
 
-            string connectionString = "Server=G513;Database=AdventureWorks2019;Trusted_Connection=True;TrustServerCertificate=true;";
+            string connectionString = "Server=G513;Database=AdventureWorks2022;Trusted_Connection=True;TrustServerCertificate=true;";
 
             HandleIndexes(connectionString);
 
