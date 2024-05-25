@@ -62,6 +62,15 @@ namespace transaction
             }
         }
 
+        public class ThreadInfo
+        {
+            public int TotalRuns { get; set; }
+            public long TotalDuration { get; set; }
+            public int TotalDeadlocks { get; set; }
+            public double AverageDuration { get; set; }
+            public long TotalTimeoutDuration { get; set; }
+        }
+
         private void HandleIndexes(string connectionString)
         {
             List<(string TableName1, string IndexName1)> indexes1 = new List<(string, string)>
@@ -171,17 +180,6 @@ namespace transaction
             }
         }
 
-        private void StartThreads(int userCount, string userType, IsolationLevel isolationLevel, string connectionString, int totalOperations, List<Thread> threads)
-        {
-            for (int i = 0; i < userCount; i++)
-            {
-                int threadIndex = i; 
-                Thread thread = new Thread(() => ExecuteQueries(userType, threadIndex, isolationLevel, connectionString, totalOperations));
-                threads.Add(thread);
-                thread.Start();
-            }
-        }
-
         private void ExecuteQueries(string type, int threadNumber, IsolationLevel isolationLevel, string connectionString, int totalOperations)
         {
             Debug.WriteLine($"{type} operation started for Thread Number {threadNumber} with {isolationLevel} isolation level on {connectionString}.");
@@ -272,18 +270,14 @@ namespace transaction
             Debug.WriteLine($"{type} operation completed with {isolationLevel} isolation level on {connectionString}. Total duration: {adjustedTotalDuration} ms. Total timeouts: {timeouts}. Total timeout duration: {totalTimeoutDuration} ms.");
         }
 
-        private void RollbackTransaction(SqlTransaction transaction)
+        private void StartThreads(int userCount, string userType, IsolationLevel isolationLevel, string connectionString, int totalOperations, List<Thread> threads)
         {
-            if (transaction != null)
+            for (int i = 0; i < userCount; i++)
             {
-                try
-                {
-                    transaction.Rollback();
-                }
-                catch (InvalidOperationException ex)
-                {
-                    Debug.WriteLine($"Rollback failed: {ex.Message}");
-                }
+                int threadIndex = i;
+                Thread thread = new Thread(() => ExecuteQueries(userType, threadIndex, isolationLevel, connectionString, totalOperations));
+                threads.Add(thread);
+                thread.Start();
             }
         }
 
@@ -333,14 +327,20 @@ namespace transaction
                 }
             }
         }
-    }
 
-    public class ThreadInfo
-    {
-        public int TotalRuns { get; set; }
-        public long TotalDuration { get; set; }
-        public int TotalDeadlocks { get; set; }
-        public double AverageDuration { get; set; }
-        public long TotalTimeoutDuration { get; set; }
+        private void RollbackTransaction(SqlTransaction transaction)
+        {
+            if (transaction != null)
+            {
+                try
+                {
+                    transaction.Rollback();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Debug.WriteLine($"Rollback failed: {ex.Message}");
+                }
+            }
+        }
     }
 }
